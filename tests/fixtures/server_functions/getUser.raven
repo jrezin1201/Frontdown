@@ -1,0 +1,3 @@
+server fn getUser(id: uuid) -> User {
+  return db.users.findUnique({ where: { id } })
+}
