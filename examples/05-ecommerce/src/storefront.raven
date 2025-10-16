@@ -1,0 +1,3 @@
+page Storefront() {
+  return <div>Storefront placeholder</div>
+}

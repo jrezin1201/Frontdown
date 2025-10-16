@@ -1,0 +1,5 @@
+[book]
+title = "RavensOne Documentation"
+author = "RavensOne Team"
+multilingual = false
+src = "src"

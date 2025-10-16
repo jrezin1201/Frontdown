@@ -1,0 +1,9 @@
+{
+  "scopeName": "source.raven",
+  "patterns": [
+    {
+      "name": "keyword.control.raven",
+      "match": "\\b(component|server|fn|return)\\b"
+    }
+  ]
+}
