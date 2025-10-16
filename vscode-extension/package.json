@@ -1,0 +1,30 @@
+{
+  "name": "ravensone",
+  "displayName": "RavensOne",
+  "publisher": "ravensone",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "activationEvents": [
+    "onLanguage:raven"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "raven",
+        "aliases": ["RavensOne"],
+        "extensions": [".raven"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "raven",
+        "scopeName": "source.raven",
+        "path": "./src/syntax/raven.tmLanguage.json"
+      }
+    ]
+  },
+  "main": "./dist/extension.js"
+}
