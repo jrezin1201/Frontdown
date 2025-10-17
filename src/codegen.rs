@@ -1,3 +1,5 @@
+//! TSX codegen
+
 use crate::ast::{Attr, AttrValue, Document, Node};
 
 pub fn to_tsx(doc: &Document) -> String {
@@ -75,7 +77,7 @@ fn escape_string(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{AttrValue, Document, Node};
+    use crate::ast::{Document, Node};
 
     #[test]
     fn renders_simple_tree() {
@@ -88,9 +90,22 @@ mod tests {
         };
         assert_eq!(to_tsx(&doc), "<div>Hello</div>");
     }
-//! Placeholder module for RavensOne.
 
-/// Initializes module-specific resources.
+    #[test]
+    fn renders_empty_element_self_closing() {
+        let doc = Document {
+            children: vec![Node::Element {
+                name: "img".into(),
+                attrs: vec![],
+                children: vec![], // no children -> self-closing
+            }],
+        };
+        assert_eq!(to_tsx(&doc), "<img />");
+    }
+}
+
+// Optional placeholder at module scope (NOT inside tests)
+#[allow(dead_code)]
 pub fn init() -> &'static str {
     "initialized"
 }

@@ -20,7 +20,7 @@ pub enum TokenKind {
     Eof,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
     pub line: usize,
     pub col: usize,
@@ -29,6 +29,7 @@ pub struct Span {
 }
 
 impl Span {
+    #[inline]
     pub fn end_offset(&self) -> usize {
         self.offset + self.len
     }
@@ -57,9 +58,4 @@ impl fmt::Display for TokenKind {
             TokenKind::Eof => write!(f, "end of file"),
         }
     }
-//! Placeholder module for RavensOne.
-
-/// Initializes module-specific resources.
-pub fn init() -> &'static str {
-    "initialized"
 }

@@ -1,3 +1,5 @@
+//! AST types for RavensOne.
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum AttrValue {
     Str(String),
@@ -24,9 +26,6 @@ pub enum Node {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Document {
     pub children: Vec<Node>,
-//! Placeholder module for RavensOne.
-
-/// Initializes module-specific resources.
-pub fn init() -> &'static str {
-    "initialized"
 }
+
+// Optional: a tiny placeholder function can live at module scope (not inside a struct)

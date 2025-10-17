@@ -1,3 +1,5 @@
+//! Lexer
+
 use crate::token::{Span, Token, TokenKind};
 use thiserror::Error;
 
@@ -12,6 +14,7 @@ struct Lexer<'a> {
     index: usize,
     line: usize,
     col: usize,
+    in_tag: bool, // <-- track whether we're inside a <...> tag
 }
 
 impl<'a> Lexer<'a> {
@@ -21,6 +24,7 @@ impl<'a> Lexer<'a> {
             index: 0,
             line: 1,
             col: 1,
+            in_tag: false,
         }
     }
 
@@ -32,7 +36,8 @@ impl<'a> Lexer<'a> {
                 '<' => tokens.push(self.consume_single(TokenKind::LAngle)),
                 '>' => tokens.push(self.consume_single(TokenKind::RAngle)),
                 '/' => {
-                    if self.peek_next_char() == Some('/') {
+                    if self.peek_next_char() == Some('/') && !self.in_tag {
+                        // Only treat // as a line comment when not inside a tag
                         self.consume_comment();
                         continue;
                     }
@@ -40,34 +45,36 @@ impl<'a> Lexer<'a> {
                 }
                 '=' => tokens.push(self.consume_single(TokenKind::Equals)),
                 '{' => {
-                    let lbrace_token = self.consume_single(TokenKind::LBrace);
-                    tokens.push(lbrace_token);
+                    let lbrace = self.consume_single(TokenKind::LBrace);
+                    tokens.push(lbrace);
                     self.consume_expression(&mut tokens)?;
                 }
                 '}' => {
-                    // stray closing brace
+                    // stray closing brace; parser will validate
                     tokens.push(self.consume_single(TokenKind::RBrace));
                 }
                 '"' => {
-                    let (token, _) = self.consume_string()?;
-                    tokens.push(token);
+                    let (tok, _) = self.consume_string()?;
+                    tokens.push(tok);
                 }
                 c if c.is_whitespace() => {
                     self.consume_whitespace();
                 }
-                c if is_ident_start(c) => {
-                    let token = self.consume_ident();
-                    tokens.push(token);
+                c if is_ident_start(c) && self.in_tag => {
+                    // Identifiers (tag/attr names) only *inside* a tag
+                    tokens.push(self.consume_ident());
                 }
                 _ => {
-                    let (token, produced) = self.consume_text();
+                    // Everything else outside tags is text
+                    let (tok, produced) = self.consume_text();
                     if produced {
-                        tokens.push(token);
+                        tokens.push(tok);
                     }
                 }
             }
         }
 
+        // EOF
         let eof_span = Span {
             line: self.line,
             col: self.col,
@@ -78,19 +85,25 @@ impl<'a> Lexer<'a> {
             kind: TokenKind::Eof,
             span: eof_span,
         });
-
         Ok(tokens)
     }
 
     fn consume_single(&mut self, kind: TokenKind) -> Token {
         let mark = self.mark();
         self.advance_char();
+        // Update tag state when we see < or >
+        match kind {
+            TokenKind::LAngle => self.in_tag = true,
+            TokenKind::RAngle => self.in_tag = false,
+            _ => {}
+        }
         let span = self.span_from(mark);
         Token { kind, span }
     }
 
     fn consume_ident(&mut self) -> Token {
         let mark = self.mark();
+        // first char already validated by caller
         self.advance_char();
         while let Some(ch) = self.peek_char() {
             if is_ident_continue(ch) {
@@ -100,7 +113,7 @@ impl<'a> Lexer<'a> {
             }
         }
         let span = self.span_from(mark);
-        let text = &self.input[span.offset..span.end_offset()];
+        let text = &self.input[mark.index..self.index];
         Token {
             kind: TokenKind::Ident(text.to_string()),
             span,
@@ -109,7 +122,7 @@ impl<'a> Lexer<'a> {
 
     fn consume_string(&mut self) -> Result<(Token, String), LexError> {
         let mark = self.mark();
-        // skip opening quote
+        // skip opening "
         self.advance_char();
         let mut value = String::new();
 
@@ -138,19 +151,18 @@ impl<'a> Lexer<'a> {
                             self.advance_char();
                             value.push(other);
                         }
-                        None => {
-                            return Err(LexError::Invalid(self.span_from(mark)));
-                        }
+                        None => return Err(LexError::Invalid(self.span_from(mark))),
                     }
                 }
                 '"' => {
+                    // closing "
                     self.advance_char();
                     let span = self.span_from(mark);
-                    let token = Token {
+                    let tok = Token {
                         kind: TokenKind::Str(value.clone()),
                         span,
                     };
-                    return Ok((token, value));
+                    return Ok((tok, value));
                 }
                 _ => {
                     self.advance_char();
@@ -159,6 +171,7 @@ impl<'a> Lexer<'a> {
             }
         }
 
+        // EOF before closing quote
         Err(LexError::Invalid(self.span_from(mark)))
     }
 
@@ -167,7 +180,18 @@ impl<'a> Lexer<'a> {
         let mut value = String::new();
 
         while let Some(ch) = self.peek_char() {
-            if ch == '<' || ch == '{' {
+            // stop at constructs handled by other scanners
+            if ch == '<'
+                || ch == '{'
+                || ch == '}'
+                || ch == '"'
+                || (self.in_tag && (ch == '/' || ch == '='))
+            {
+                break;
+            }
+            // If we encounter an identifier-start *and* we're inside a tag, stop;
+            // the tag body (attr names) should be handled by consume_ident.
+            if self.in_tag && is_ident_start(ch) {
                 break;
             }
             value.push(ch);
@@ -206,18 +230,19 @@ impl<'a> Lexer<'a> {
     }
 
     fn consume_comment(&mut self) {
-        // consume initial '//'
-        self.advance_char();
-        self.advance_char();
+        // assumes we've seen first '/', and peek_next_char() was '/'
+        self.advance_char(); // first '/'
+        self.advance_char(); // second '/'
         while let Some(ch) = self.peek_char() {
             if ch == '\n' {
-                break;
+                break; // leave newline for main loop to handle col/line
             }
             self.advance_char();
         }
     }
 
     fn consume_expression(&mut self, tokens: &mut Vec<Token>) -> Result<(), LexError> {
+        // we already pushed LBrace
         let start_span = tokens.last().map(|t| t.span.clone()).unwrap_or(Span {
             line: self.line,
             col: self.col,
@@ -247,9 +272,9 @@ impl<'a> Lexer<'a> {
     }
 
     fn peek_next_char(&self) -> Option<char> {
-        let mut iter = self.input[self.index..].chars();
-        iter.next()?;
-        iter.next()
+        let mut it = self.input[self.index..].chars();
+        it.next()?;
+        it.next()
     }
 
     fn advance_char(&mut self) -> Option<char> {
@@ -283,8 +308,9 @@ impl<'a> Lexer<'a> {
             len: self.index - mark.index,
         }
     }
-}
+} // <-- closes impl<'a> Lexer<'a>
 
+#[derive(Copy, Clone, Debug)]
 struct Mark {
     index: usize,
     line: usize,
@@ -317,6 +343,7 @@ pub fn lex(input: &str) -> Result<Vec<Token>, LexError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::token::TokenKind;
 
     #[test]
     fn lexes_simple_element() {
@@ -348,9 +375,4 @@ mod tests {
         assert_eq!(kinds[3], TokenKind::Equals);
         assert_eq!(kinds[4], TokenKind::Str("cta".into()));
     }
-//! Placeholder module for RavensOne.
-
-/// Initializes module-specific resources.
-pub fn init() -> &'static str {
-    "initialized"
 }

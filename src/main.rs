@@ -66,7 +66,7 @@ fn report_error(err: &CliError) {
         CliError::Compile(comp) => match comp {
             CompileError::Component(msg) => eprintln!("error: {}", msg),
             CompileError::Lex(lex) => {
-                use ravensone::lexer::LexError;
+                use ravensone::LexError;
                 match lex {
                     LexError::Invalid(span) => {
                         eprintln!(
@@ -77,7 +77,7 @@ fn report_error(err: &CliError) {
                 }
             }
             CompileError::Parse(parse) => {
-                use ravensone::parser::ParseError;
+                use ravensone::ParseError;
                 match parse {
                     ParseError::Unexpected { span, expected, .. } => {
                         eprintln!(
@@ -105,16 +105,5 @@ fn report_error(err: &CliError) {
             }
         },
         CliError::Io(io_err) => eprintln!("io error: {}", io_err),
-use std::env;
-
-use ravensone::version;
-
-fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() > 1 && args[1] == "--version" {
-        println!("RavensOne CLI v{}", version());
-    } else {
-        println!("RavensOne CLI v{}", version());
     }
 }

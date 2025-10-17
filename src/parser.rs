@@ -1,6 +1,5 @@
 use crate::ast::{Attr, AttrValue, Document, Node};
-use crate::token::Span;
-use crate::token::{Token, TokenKind};
+use crate::token::{Span, Token, TokenKind};
 use thiserror::Error;
 
 pub fn parse(tokens: &[Token], src: &str) -> Result<Document, ParseError> {
@@ -60,7 +59,7 @@ impl<'a> Parser<'a> {
                 let expr = self.parse_expr_string()?;
                 Ok(Node::Expr(expr))
             }
-            _ => Err(self.unexpected(&self.current().clone(), "element, text, or expression")),
+            _ => Err(self.unexpected(self.current(), "element, text, or expression")),
         }
     }
 
@@ -68,20 +67,19 @@ impl<'a> Parser<'a> {
         let open = self.expect(TokenKind::LAngle, "<")?;
         let name_token = self.expect_ident("tag name")?;
         let name = match &name_token.kind {
-            TokenKind::Ident(value) => value.clone(),
+            TokenKind::Ident(v) => v.clone(),
             _ => unreachable!(),
         };
+
         let mut attrs = Vec::new();
         loop {
-            match self.current().kind.clone() {
-                TokenKind::Ident(_) => {
-                    attrs.push(self.parse_attr()?);
-                }
+            match self.current().kind {
+                TokenKind::Ident(_) => attrs.push(self.parse_attr()?),
                 _ => break,
             }
         }
 
-        match self.current().kind.clone() {
+        match self.current().kind {
             TokenKind::Slash => {
                 self.pos += 1;
                 self.expect(TokenKind::RAngle, ">")?;
@@ -104,7 +102,7 @@ impl<'a> Parser<'a> {
                 self.expect(TokenKind::Slash, "/")?;
                 let closing_name = self.expect_ident("closing tag name")?;
                 let found_name = match closing_name.kind {
-                    TokenKind::Ident(ref value) => value.clone(),
+                    TokenKind::Ident(ref v) => v.clone(),
                     _ => unreachable!(),
                 };
                 if found_name != name {
@@ -121,14 +119,14 @@ impl<'a> Parser<'a> {
                     children,
                 })
             }
-            _ => Err(self.unexpected(&self.current().clone(), "`>` or `/>`")),
+            _ => Err(self.unexpected(self.current(), "`>` or `/>`")),
         }
     }
 
     fn parse_attr(&mut self) -> Result<Attr, ParseError> {
         let name_token = self.expect_ident("attribute name")?;
-        let name = if let TokenKind::Ident(value) = name_token.kind.clone() {
-            value
+        let name = if let TokenKind::Ident(v) = name_token.kind.clone() {
+            v
         } else {
             unreachable!()
         };
@@ -142,16 +140,15 @@ impl<'a> Parser<'a> {
                 let expr = self.parse_expr_string()?;
                 AttrValue::Expr(expr)
             }
-            _ => {
-                return Err(self.unexpected(&self.current().clone(), "string literal or expression"))
-            }
+            _ => return Err(self.unexpected(self.current(), "string literal or expression")),
         };
         Ok(Attr { name, value })
     }
 
     fn parse_expr_string(&mut self) -> Result<String, ParseError> {
         let lbrace = self.expect(TokenKind::LBrace, "{")?;
-        let start = lbrace.span.end_offset();
+        // Compute start/end directly from Span fields (no end_offset method on Span)
+        let start = lbrace.span.offset + lbrace.span.len;
         let rbrace = self.expect(TokenKind::RBrace, "}")?;
         let end = rbrace.span.offset;
         let slice = self
@@ -159,7 +156,7 @@ impl<'a> Parser<'a> {
             .get(start..end)
             .ok_or_else(|| ParseError::Unexpected {
                 found: TokenKind::RBrace,
-                span: rbrace.span.clone(),
+                span: rbrace.span,
                 expected: "expression contents",
             })?;
         Ok(slice.trim().to_string())
@@ -205,7 +202,9 @@ impl<'a> Parser<'a> {
         )
     }
 
+    #[inline]
     fn current(&self) -> &Token {
+        // Safe because we always stop at Eof and callers guard with it
         &self.tokens[self.pos]
     }
 
@@ -216,7 +215,7 @@ impl<'a> Parser<'a> {
     fn unexpected(&self, token: &Token, expected: &'static str) -> ParseError {
         ParseError::Unexpected {
             found: token.kind.clone(),
-            span: token.span.clone(),
+            span: token.span,
             expected,
         }
     }
@@ -241,9 +240,4 @@ mod tests {
             _ => panic!("expected element"),
         }
     }
-//! Placeholder module for RavensOne.
-
-/// Initializes module-specific resources.
-pub fn init() -> &'static str {
-    "initialized"
 }

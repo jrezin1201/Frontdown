@@ -1,14 +1,17 @@
 //! RavensOne compiler library.
 
-pub mod ast;
-pub mod codegen;
-pub mod lexer;
-pub mod parser;
-pub mod token;
+mod ast;
+mod codegen;
+mod lexer;
+mod parser;
+mod token;
 
 pub use codegen::to_tsx;
 pub use lexer::lex;
 pub use parser::parse;
+
+pub use crate::lexer::LexError;
+pub use crate::parser::ParseError;
 
 use thiserror::Error;
 
@@ -22,6 +25,7 @@ pub enum CompileError {
     Parse(#[from] parser::ParseError),
 }
 
+/// Compile a RavensOne component source string into TSX.
 pub fn compile_component(src: &str) -> Result<String, CompileError> {
     let component = parse_component(src)?;
     let markup = extract_markup(&component.body)?;
@@ -39,11 +43,14 @@ struct Component {
 
 fn parse_component(src: &str) -> Result<Component, CompileError> {
     let trimmed = src.trim();
+
+    // `component` keyword
     let rest = trimmed
         .strip_prefix("component")
         .ok_or_else(|| CompileError::Component("expected `component` keyword".into()))?
         .trim_start();
 
+    // name + params
     let paren_start = rest
         .find('(')
         .ok_or_else(|| CompileError::Component("missing parameter list".into()))?;
@@ -55,7 +62,8 @@ fn parse_component(src: &str) -> Result<Component, CompileError> {
     let (params_raw, after_params) = extract_parens(&rest[paren_start..])?;
     let params = parse_params(params_raw);
 
-    let (body, _) = extract_block(after_params.trim_start())?;
+    // body block
+    let (body, _remainder) = extract_block(after_params.trim_start())?;
 
     Ok(Component {
         name: name.to_string(),
@@ -65,17 +73,24 @@ fn parse_component(src: &str) -> Result<Component, CompileError> {
 }
 
 fn extract_markup(body: &str) -> Result<String, CompileError> {
+    // naive: find `return ...;` and grab the expression
     let return_idx = body
         .find("return")
         .ok_or_else(|| CompileError::Component("missing `return` in component body".into()))?;
+
     let after_return = &body[return_idx + "return".len()..];
     let mut markup = after_return.trim();
+
+    // strip trailing `;`
     if markup.ends_with(';') {
         markup = markup[..markup.len() - 1].trim_end();
     }
-    if markup.starts_with('(') && markup.ends_with(')') {
+
+    // allow parentheses wrapping
+    if markup.starts_with('(') && markup.ends_with(')') && markup.len() >= 2 {
         markup = markup[1..markup.len() - 1].trim();
     }
+
     if markup.is_empty() {
         return Err(CompileError::Component("empty return body".into()));
     }
@@ -97,6 +112,7 @@ fn render_component(name: &str, params: &[String], tsx: &str) -> String {
     output
 }
 
+/// Extracts the inside of a balanced `( … )` sequence at the beginning of `input`.
 fn extract_parens(input: &str) -> Result<(&str, &str), CompileError> {
     if !input.starts_with('(') {
         return Err(CompileError::Component("expected `(`".into()));
@@ -106,7 +122,7 @@ fn extract_parens(input: &str) -> Result<(&str, &str), CompileError> {
         match ch {
             '(' => depth += 1,
             ')' => {
-                depth -= 1;
+                depth = depth.saturating_sub(1);
                 if depth == 0 {
                     let inside = &input[1..idx];
                     let rest = &input[idx + 1..];
@@ -121,6 +137,7 @@ fn extract_parens(input: &str) -> Result<(&str, &str), CompileError> {
     ))
 }
 
+/// Extracts the inside of a balanced `{ … }` sequence at the beginning of `input`.
 fn extract_block(input: &str) -> Result<(&str, &str), CompileError> {
     if !input.starts_with('{') {
         return Err(CompileError::Component("expected `{`".into()));
@@ -130,7 +147,7 @@ fn extract_block(input: &str) -> Result<(&str, &str), CompileError> {
         match ch {
             '{' => depth += 1,
             '}' => {
-                depth -= 1;
+                depth = depth.saturating_sub(1);
                 if depth == 0 {
                     let inside = &input[1..idx];
                     let rest = &input[idx + 1..];
@@ -158,29 +175,6 @@ fn parse_params(params: &str) -> Vec<String> {
         })
         .collect()
 }
-pub mod analyzer;
-pub mod ast;
-pub mod bundler;
-pub mod codegen;
-pub mod codegen_enhanced;
-pub mod config;
-pub mod devserver;
-pub mod env;
-pub mod errors;
-pub mod formatter;
-pub mod jsx;
-pub mod lexer;
-pub mod linter;
-pub mod middleware;
-pub mod module;
-pub mod optimizer;
-pub mod parser;
-pub mod project;
-pub mod route_parser;
-pub mod schema;
-pub mod stdlib;
-pub mod token;
-pub mod typechecker;
 
 /// Returns the current RavensOne library version.
 pub fn version() -> &'static str {
