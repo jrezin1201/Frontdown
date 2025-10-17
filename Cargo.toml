@@ -3,6 +3,13 @@ name = "ravensone"
 version = "0.1.0"
 edition = "2021"
 
+authors = ["RavensOne Contributors <team@ravensone.dev>"]
+description = "A unified programming language for full-stack web development."
+license = "MIT"
+repository = "https://github.com/yourusername/ravensone"
+documentation = "https://ravensone.dev/docs"
+readme = "README.md"
+
 [lib]
 name = "ravensone"
 path = "src/lib.rs"
@@ -11,6 +18,12 @@ path = "src/lib.rs"
 name = "raven"
 path = "src/main.rs"
 
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+thiserror = "1"
+
+[dev-dependencies]
+assert_cmd = "2"
 authors = ["RavensOne Contributors <team@ravensone.dev>"]
 description = "A unified programming language for full-stack web development."
 license = "MIT"

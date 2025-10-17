@@ -82,6 +82,9 @@ server fn getUser(id: uuid) -> Result<User, Error> {
 ### Build & Deploy
 
 ```bash
+cargo build
+cargo test
+cargo run -- build examples/01-hello-world/src/app.raven -o dist/app.tsx
 # Build for production
 raven build
 
