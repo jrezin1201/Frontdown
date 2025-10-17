@@ -348,4 +348,9 @@ mod tests {
         assert_eq!(kinds[3], TokenKind::Equals);
         assert_eq!(kinds[4], TokenKind::Str("cta".into()));
     }
+//! Placeholder module for RavensOne.
+
+/// Initializes module-specific resources.
+pub fn init() -> &'static str {
+    "initialized"
 }

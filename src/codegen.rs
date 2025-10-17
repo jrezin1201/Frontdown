@@ -88,4 +88,9 @@ mod tests {
         };
         assert_eq!(to_tsx(&doc), "<div>Hello</div>");
     }
+//! Placeholder module for RavensOne.
+
+/// Initializes module-specific resources.
+pub fn init() -> &'static str {
+    "initialized"
 }

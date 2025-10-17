@@ -15,4 +15,10 @@ fn builds_all_fixture_components() {
         let output = compile_component(&source).expect("compilation succeeded");
         assert_eq!(output, expected_tsx, "fixture {} should compile", input);
     }
+mod common;
+
+#[test]
+fn builds_example_project() {
+    let fixture = common::fixture("components/button.raven");
+    assert!(fixture.contains("button"));
 }

@@ -85,6 +85,12 @@ server fn getUser(id: uuid) -> Result<User, Error> {
 cargo build
 cargo test
 cargo run -- build examples/01-hello-world/src/app.raven -o dist/app.tsx
+# Build for production
+raven build
+
+# Deploy to Vercel
+cd dist
+vercel deploy
 ```
 
 ## 📖 Documentation

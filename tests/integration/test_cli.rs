@@ -28,4 +28,10 @@ fn builds_fixture_via_cli() {
     let actual = std::fs::read_to_string(&output).expect("output file readable");
     assert_eq!(actual, expected);
     let _ = std::fs::remove_file(output);
+use assert_cmd::Command;
+
+#[test]
+fn prints_version() {
+    let mut cmd = Command::cargo_bin("raven").expect("binary built");
+    cmd.arg("--version").assert().success();
 }

@@ -24,4 +24,9 @@ pub enum Node {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Document {
     pub children: Vec<Node>,
+//! Placeholder module for RavensOne.
+
+/// Initializes module-specific resources.
+pub fn init() -> &'static str {
+    "initialized"
 }

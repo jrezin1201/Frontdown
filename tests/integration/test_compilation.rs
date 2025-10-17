@@ -102,4 +102,6 @@ fn render_component(name: &str, params: &[String], body: &str) -> String {
         format!("({{ {} }})", params.join(", "))
     };
     format!("export function {}{} {{\n  return {};\n}}\n", name, params_binding, body)
+    let fixture = common::fixture("basic/input.raven");
+    assert!(fixture.contains("basic"));
 }
